@@ -1,0 +1,99 @@
+import heapq
+
+# Define the grid with terrain types
+terrain_grid = [
+    "S....~..^.",
+    "###..~#.^.",
+    "...#..#...",
+    ".~~#......",
+    ".....####.",
+    "^^......~.",
+    "#....#~~~.",
+    "..##......",
+    ".....^^^^G",
+    ".######..."
+]
+
+# Grid dimensions
+total_rows = len(terrain_grid)
+total_cols = len(terrain_grid[0])
+
+# Movement costs for each terrain
+terrain_cost = {
+    'S': 1,
+    'G': 1,
+    '.': 1,
+    '~': 3,
+    '^': 5,
+    '#': float('inf')  # wall / blocked
+}
+
+# Find start and goal positions
+start_pos = goal_pos = None
+for row in range(total_rows):
+    for col in range(total_cols):
+        if terrain_grid[row][col] == 'S':
+            start_pos = (row, col)
+        elif terrain_grid[row][col] == 'G':
+            goal_pos = (row, col)
+
+# Simple Manhattan distance as heuristic
+def guess_distance(current, target):
+    return abs(current[0] - target[0]) + abs(current[1] - target[1])
+
+# Check if a tile is walkable
+def is_walkable(x, y):
+    return 0 <= x < total_rows and 0 <= y < total_cols and terrain_grid[x][y] != '#'
+
+# Main pathfinding function using A*
+def find_best_path(start, goal):
+    steps_to_explore = []
+    heapq.heappush(steps_to_explore, (0 + guess_distance(start, goal), 0, start))
+
+    previous_step = {start: None}
+    cost_so_far = {start: 0}
+
+    while steps_to_explore:
+        _, cost_till_now, current_pos = heapq.heappop(steps_to_explore)
+
+        if current_pos == goal:
+            break
+
+        directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        for dx, dy in directions:
+            new_x, new_y = current_pos[0] + dx, current_pos[1] + dy
+
+            if not is_walkable(new_x, new_y):
+                continue
+
+            tile_type = terrain_grid[new_x][new_y]
+            step_cost = terrain_cost.get(tile_type, float('inf'))
+
+            new_position = (new_x, new_y)
+            new_total_cost = cost_till_now + step_cost
+
+            if new_total_cost < cost_so_far.get(new_position, float('inf')):
+                cost_so_far[new_position] = new_total_cost
+                total_priority = new_total_cost + guess_distance(new_position, goal)
+                heapq.heappush(steps_to_explore, (total_priority, new_total_cost, new_position))
+                previous_step[new_position] = current_pos
+
+    # Reconstruct path from goal to start
+    final_path = []
+    position = goal
+    while position:
+        final_path.append(position)
+        position = previous_step.get(position)
+    final_path.reverse()
+
+    return final_path, cost_so_far.get(goal, float('inf'))
+
+# Run the algorithm
+best_path, total_path_cost = find_best_path(start_pos, goal_pos)
+
+# Print the result
+print("Step-by-step path:")
+for step in best_path:
+    print(step)
+
+print("Total Minimum Cost:", total_path_cost)
